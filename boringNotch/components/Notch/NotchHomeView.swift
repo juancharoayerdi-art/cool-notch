@@ -423,6 +423,7 @@ struct NotchHomeView: View {
     @ObservedObject var webcamManager = WebcamManager.shared
     @ObservedObject var batteryModel = BatteryStatusViewModel.shared
     @ObservedObject var coordinator = BoringViewCoordinator.shared
+    @ObservedObject var shelf = ShelfStateViewModel.shared
     let albumArtNamespace: Namespace.ID
 
     var body: some View {
@@ -459,6 +460,11 @@ struct NotchHomeView: View {
                     .opacity(vm.notchState == .closed ? 0 : 1)
                     .blur(radius: vm.notchState == .closed ? 20 : 0)
                     .animation(.interactiveSpring(response: 0.32, dampingFraction: 0.76, blendDuration: 0), value: shouldShowCamera)
+            }
+
+            if Defaults[.boringShelf] && !shelf.isEmpty {
+                MiniShelfView()
+                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
             }
         }
         .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .top)), removal: .opacity))

@@ -21,6 +21,7 @@ let tabs = [
 
 struct TabSelectionView: View {
     @ObservedObject var coordinator = BoringViewCoordinator.shared
+    @ObservedObject var shelf = ShelfStateViewModel.shared
     @Namespace var animation
     var body: some View {
         HStack(spacing: 0) {
@@ -31,6 +32,17 @@ struct TabSelectionView: View {
                         }
                     }
                     .frame(height: 26)
+                    .overlay(alignment: .topTrailing) {
+                        if tab.view == .shelf && !shelf.isEmpty && coordinator.currentView != .shelf {
+                            Text("\(shelf.items.count)")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(.black)
+                                .frame(minWidth: 12, minHeight: 12)
+                                .background(Circle().fill(Color.effectiveAccent))
+                                .offset(x: -6, y: 1)
+                                .transition(.scale.combined(with: .opacity))
+                        }
+                    }
                     .foregroundStyle(tab.view == coordinator.currentView ? .white : .gray)
                     .background {
                         if tab.view == coordinator.currentView {

@@ -9,6 +9,7 @@ import AVFoundation
 import Combine
 import Defaults
 import KeyboardShortcuts
+import LaunchAtLogin
 import Sparkle
 import SwiftUI
 
@@ -281,6 +282,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+
+        // Cool Notch: launch at login by default (once); users can turn it off in Settings.
+        if !UserDefaults.standard.bool(forKey: "coolNotchDidEnableLaunchAtLogin") {
+            LaunchAtLogin.isEnabled = true
+            UserDefaults.standard.set(true, forKey: "coolNotchDidEnableLaunchAtLogin")
+        }
 
         NotificationCenter.default.addObserver(
             self,
