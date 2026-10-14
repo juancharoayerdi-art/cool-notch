@@ -67,6 +67,9 @@ struct BoringHeader: View {
                             }
                             .buttonStyle(PlainButtonStyle())
                         }
+                        if ChatGPTVoiceButton.isChatGPTInstalled {
+                            ChatGPTVoiceButton()
+                        }
                         if Defaults[.settingsIconInNotch] {
                             Button(action: {
                                 DispatchQueue.main.async {
@@ -123,4 +126,60 @@ struct BoringHeader: View {
 
 #Preview {
     BoringHeader().environmentObject(BoringViewModel())
+}
+
+
+// MARK: - ChatGPT voice shortcut (Cool Notch)
+
+/// Starts a new ChatGPT voice chat in the background. Shows a spinner while ChatGPT
+/// loads so it's clear the tap registered, and a brief warning icon if it failed.
+struct ChatGPTVoiceButton: View {
+    enum Phase { case idle, loading, failed }
+    @State private var phase: Phase = .idle
+
+    static let isChatGPTInstalled =
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.openai.codex") != nil
+
+    var body: some View {
+        Button(action: start) {
+            Capsule()
+                .fill(.black)
+                .frame(width: 30, height: 30)
+                .overlay {
+                    switch phase {
+                    case .idle:
+                        Image(systemName: "waveform")
+                            .foregroundColor(.white)
+                            .imageScale(.medium)
+                    case .loading:
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(.white)
+                    case .failed:
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.yellow)
+                            .imageScale(.small)
+                    }
+                }
+        }
+        .buttonStyle(PlainButtonStyle())
+        .disabled(phase == .loading)
+        .help("Hablar con ChatGPT")
+    }
+
+    private func start() {
+        guard phase != .loading else { return }
+        withAnimation(.smooth) { phase = .loading }
+        Task {
+            let authorized = await XPCHelperClient.shared.ensureAccessibilityAuthorization(promptIfNeeded: true)
+            let ok = authorized ? await XPCHelperClient.shared.startChatGPTVoice() : false
+            await MainActor.run {
+                withAnimation(.smooth) { phase = ok ? .idle : .failed }
+            }
+            if !ok {
+                try? await Task.sleep(for: .seconds(2))
+                await MainActor.run { withAnimation(.smooth) { phase = .idle } }
+            }
+        }
+    }
 }

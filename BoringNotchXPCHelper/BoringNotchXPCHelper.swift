@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import AppKit
 import ApplicationServices
 import IOKit
 import CoreGraphics
@@ -122,6 +123,65 @@ class BoringNotchXPCHelper: NSObject, BoringNotchXPCHelperProtocol {
             IOObjectRelease(io)
         }
         reply(nil)
+    }
+
+    // MARK: - ChatGPT voice (Cool Notch)
+
+    private static let chatGPTBundleID = "com.openai.codex"
+
+    /// Opens a new ChatGPT chat, triggers its voice mode (Ctrl+Shift+V) and hides the
+    /// window so only ChatGPT's floating voice orb stays on screen.
+    @objc func startChatGPTVoice(with reply: @escaping (Bool) -> Void) {
+        guard AXIsProcessTrusted(),
+              let url = URL(string: "codex://threads/new?mode=chat") else {
+            reply(false)
+            return
+        }
+        let bundleID = Self.chatGPTBundleID
+        let wasRunning = !NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty
+
+        DispatchQueue.main.async {
+            let config = NSWorkspace.OpenConfiguration()
+            config.activates = true
+            NSWorkspace.shared.open(url, configuration: config) { _, error in
+                guard error == nil else { reply(false); return }
+                DispatchQueue.global(qos: .userInitiated).async {
+                    // Wait (up to 20s) for ChatGPT to come to the front.
+                    let deadline = Date().addingTimeInterval(20)
+                    var app: NSRunningApplication?
+                    while Date() < deadline {
+                        if let front = NSWorkspace.shared.frontmostApplication,
+                           front.bundleIdentifier == bundleID {
+                            app = front
+                            break
+                        }
+                        Thread.sleep(forTimeInterval: 0.15)
+                    }
+                    guard let app else { reply(false); return }
+
+                    // Give the new chat time to load (longer on a cold start).
+                    Thread.sleep(forTimeInterval: wasRunning ? 1.0 : 3.5)
+                    Self.postKey(9 /* kVK_ANSI_V */, flags: [.maskControl, .maskShift])
+
+                    // Let voice mode start, then hide the window; the voice orb stays visible.
+                    Thread.sleep(forTimeInterval: 1.5)
+                    DispatchQueue.main.async {
+                        app.hide()
+                        reply(true)
+                    }
+                }
+            }
+        }
+    }
+
+    private static func postKey(_ keyCode: CGKeyCode, flags: CGEventFlags) {
+        let source = CGEventSource(stateID: .hidSystemState)
+        let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true)
+        let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
+        down?.flags = flags
+        up?.flags = flags
+        down?.post(tap: .cghidEventTap)
+        up?.post(tap: .cghidEventTap)
     }
 
     @objc func setScreenBrightness(_ value: Float, with reply: @escaping (Bool) -> Void) {

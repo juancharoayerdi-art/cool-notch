@@ -20,6 +20,8 @@ import Foundation
     func isScreenBrightnessAvailable(with reply: @escaping (Bool) -> Void)
     func currentScreenBrightness(with reply: @escaping (NSNumber?) -> Void)
     func setScreenBrightness(_ value: Float, with reply: @escaping (Bool) -> Void)
+    // Cool Notch: start a new ChatGPT chat in voice mode, then hide its window
+    func startChatGPTVoice(with reply: @escaping (Bool) -> Void)
 }
 
 /*
