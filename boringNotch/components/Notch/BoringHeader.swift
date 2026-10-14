@@ -18,12 +18,6 @@ struct BoringHeader: View {
             HStack {
                 if (!tvm.isEmpty || coordinator.alwaysShowTabs) && Defaults[.boringShelf] {
                     TabSelectionView()
-                    // Cool Notch: the right side of the header sits under the menu bar's status
-                    // items (which swallow clicks), so the voice button lives on the left.
-                    if vm.notchState == .open {
-                        ChatGPTVoiceButton()
-                            .padding(.leading, 4)
-                    }
                     // Cool Notch: invisible, wider hit area to the right of the tabs that opens the shelf.
                     if vm.notchState == .open && coordinator.currentView != .shelf {
                         Color.clear
@@ -142,25 +136,24 @@ struct ChatGPTVoiceButton: View {
 
     var body: some View {
         Button(action: start) {
-            Capsule()
-                .fill(Color(nsColor: .secondarySystemFill))
-                .frame(width: 30, height: 26)
-                .overlay {
-                    switch phase {
-                    case .idle:
-                        Image(systemName: "waveform")
-                            .foregroundColor(.white)
-                            .imageScale(.medium)
-                    case .loading:
-                        ProgressView()
-                            .controlSize(.small)
-                            .tint(.white)
-                    case .failed:
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.yellow)
-                            .imageScale(.small)
-                    }
+            Group {
+                switch phase {
+                case .idle:
+                    Image(systemName: "waveform")
+                        .foregroundStyle(.gray)
+                case .loading:
+                    ProgressView()
+                        .controlSize(.mini)
+                        .tint(.white)
+                case .failed:
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.yellow)
                 }
+            }
+            .frame(width: 16, height: 16)
+            .padding(.horizontal, 15)
+            .frame(height: 26)
+            .contentShape(Capsule())
         }
         .buttonStyle(PlainButtonStyle())
         .disabled(phase == .loading)

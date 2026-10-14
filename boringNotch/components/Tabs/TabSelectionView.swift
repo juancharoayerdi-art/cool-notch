@@ -26,6 +26,10 @@ struct TabSelectionView: View {
     var body: some View {
         HStack(spacing: 0) {
             ForEach(tabs) { tab in
+                    if tab.view == .shelf {
+                        // Cool Notch: ChatGPT voice shortcut sits between Home and Shelf.
+                        ChatGPTVoiceButton()
+                    }
                     TabButton(label: tab.label, icon: tab.icon, selected: coordinator.currentView == tab.view) {
                         withAnimation(.smooth) {
                             coordinator.currentView = tab.view
