@@ -464,6 +464,7 @@ struct NotchHomeView: View {
 
             if Defaults[.boringShelf] && !shelf.isEmpty {
                 MiniShelfView()
+                    .frame(maxHeight: .infinity, alignment: .center)
                     .transition(.opacity.combined(with: .scale(scale: 0.8)))
             }
         }

@@ -18,6 +18,15 @@ struct BoringHeader: View {
             HStack {
                 if (!tvm.isEmpty || coordinator.alwaysShowTabs) && Defaults[.boringShelf] {
                     TabSelectionView()
+                    // Cool Notch: invisible, wider hit area to the right of the tabs that opens the shelf.
+                    if vm.notchState == .open && coordinator.currentView != .shelf {
+                        Color.clear
+                            .frame(maxWidth: .infinity, maxHeight: 30)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation(.smooth) { coordinator.currentView = .shelf }
+                            }
+                    }
                 } else if vm.notchState == .open {
                     EmptyView()
                 }
