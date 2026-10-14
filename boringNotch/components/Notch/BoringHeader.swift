@@ -67,9 +67,7 @@ struct BoringHeader: View {
                             }
                             .buttonStyle(PlainButtonStyle())
                         }
-                        if ChatGPTVoiceButton.isChatGPTInstalled {
-                            ChatGPTVoiceButton()
-                        }
+                        ChatGPTVoiceButton()
                         if Defaults[.settingsIconInNotch] {
                             Button(action: {
                                 DispatchQueue.main.async {
@@ -136,9 +134,6 @@ struct BoringHeader: View {
 struct ChatGPTVoiceButton: View {
     enum Phase { case idle, loading, failed }
     @State private var phase: Phase = .idle
-
-    static let isChatGPTInstalled =
-        NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.openai.codex") != nil
 
     var body: some View {
         Button(action: start) {
