@@ -132,6 +132,7 @@ class BoringNotchXPCHelper: NSObject, BoringNotchXPCHelperProtocol {
     /// Opens a new ChatGPT chat, triggers its voice mode (Ctrl+Shift+V) and hides the
     /// window so only ChatGPT's floating voice orb stays on screen.
     @objc func startChatGPTVoice(with reply: @escaping (Bool) -> Void) {
+        NSLog("[CoolNotch] helper startChatGPTVoice, trusted=\(AXIsProcessTrusted())")
         guard AXIsProcessTrusted(),
               let url = URL(string: "codex://threads/new?mode=chat") else {
             reply(false)
@@ -144,7 +145,7 @@ class BoringNotchXPCHelper: NSObject, BoringNotchXPCHelperProtocol {
             let config = NSWorkspace.OpenConfiguration()
             config.activates = true
             NSWorkspace.shared.open(url, configuration: config) { _, error in
-                guard error == nil else { reply(false); return }
+                guard error == nil else { NSLog("[CoolNotch] open url failed: \(String(describing: error))"); reply(false); return }
                 DispatchQueue.global(qos: .userInitiated).async {
                     // Wait (up to 20s) for ChatGPT to come to the front.
                     let deadline = Date().addingTimeInterval(20)
@@ -157,7 +158,7 @@ class BoringNotchXPCHelper: NSObject, BoringNotchXPCHelperProtocol {
                         }
                         Thread.sleep(forTimeInterval: 0.15)
                     }
-                    guard let app else { reply(false); return }
+                    guard let app else { NSLog("[CoolNotch] ChatGPT never came to front"); reply(false); return }
 
                     // Give the new chat time to load (longer on a cold start).
                     Thread.sleep(forTimeInterval: wasRunning ? 1.0 : 3.5)

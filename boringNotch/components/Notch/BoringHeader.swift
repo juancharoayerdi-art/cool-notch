@@ -18,6 +18,12 @@ struct BoringHeader: View {
             HStack {
                 if (!tvm.isEmpty || coordinator.alwaysShowTabs) && Defaults[.boringShelf] {
                     TabSelectionView()
+                    // Cool Notch: the right side of the header sits under the menu bar's status
+                    // items (which swallow clicks), so the voice button lives on the left.
+                    if vm.notchState == .open {
+                        ChatGPTVoiceButton()
+                            .padding(.leading, 4)
+                    }
                     // Cool Notch: invisible, wider hit area to the right of the tabs that opens the shelf.
                     if vm.notchState == .open && coordinator.currentView != .shelf {
                         Color.clear
@@ -28,7 +34,7 @@ struct BoringHeader: View {
                             }
                     }
                 } else if vm.notchState == .open {
-                    EmptyView()
+                    ChatGPTVoiceButton()
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -67,7 +73,6 @@ struct BoringHeader: View {
                             }
                             .buttonStyle(PlainButtonStyle())
                         }
-                        ChatGPTVoiceButton()
                         if Defaults[.settingsIconInNotch] {
                             Button(action: {
                                 DispatchQueue.main.async {
@@ -138,8 +143,8 @@ struct ChatGPTVoiceButton: View {
     var body: some View {
         Button(action: start) {
             Capsule()
-                .fill(.black)
-                .frame(width: 30, height: 30)
+                .fill(Color(nsColor: .secondarySystemFill))
+                .frame(width: 30, height: 26)
                 .overlay {
                     switch phase {
                     case .idle:
@@ -164,10 +169,13 @@ struct ChatGPTVoiceButton: View {
 
     private func start() {
         guard phase != .loading else { return }
+        NSLog("[CoolNotch] voice button tapped")
         withAnimation(.smooth) { phase = .loading }
         Task {
             let authorized = await XPCHelperClient.shared.ensureAccessibilityAuthorization(promptIfNeeded: true)
+            NSLog("[CoolNotch] helper accessibility authorized: \(authorized)")
             let ok = authorized ? await XPCHelperClient.shared.startChatGPTVoice() : false
+            NSLog("[CoolNotch] startChatGPTVoice result: \(ok)")
             await MainActor.run {
                 withAnimation(.smooth) { phase = ok ? .idle : .failed }
             }
