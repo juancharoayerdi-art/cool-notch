@@ -1,3 +1,19 @@
+# Cool Notch 😎
+
+Mi versión personal de [Boring Notch](https://github.com/TheBoredTeam/boring.notch), un poco más cool.
+
+**Descargar:** bajá `Cool-Notch.dmg` desde [Releases](https://github.com/juancharoayerdi-art/cool-notch/releases/latest) y seguí el `LEEME.txt` que viene adentro.
+
+Qué cambia respecto de Boring Notch:
+- Abre siempre en la música, con una mini pila de los archivos del estante al lado.
+- Botón de voz (la onda): arranca el modo de voz de la app ChatGPT para Mac sin sacarte de lo que estás haciendo.
+- Ícono nuevo, inicio automático al abrir sesión y sin actualizaciones automáticas de Boring Notch.
+- Funciona con Spotify, Apple Music y YouTube Music (en el navegador vía "Now Playing", o con Pear Desktop).
+
+Cool Notch es software libre bajo GPL-3.0, igual que Boring Notch. Todo el crédito del proyecto original es de TheBoredTeam.
+
+---
+
 <h1 align="center">
   <br>
   <a href="http://theboring.name"><img src="https://framerusercontent.com/images/RFK4vs0kn8pRMuOO58JeyoemXA.png?scale-down-to=256" alt="Boring Notch" width="150"></a>
