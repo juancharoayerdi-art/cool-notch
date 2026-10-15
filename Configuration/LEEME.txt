@@ -1,0 +1,30 @@
+COOL NOTCH — cómo instalarlo
+============================
+
+1. Arrastrá "Cool Notch" a la carpeta "Aplicaciones".
+
+2. Abrilo desde Aplicaciones. Como no está publicado en la App Store,
+   la primera vez macOS va a decir que no puede verificarlo:
+   - Tocá "Listo" / "OK".
+   - Andá a Configuración del Sistema → Privacidad y seguridad.
+   - Bajá hasta el final y tocá "Abrir igualmente" junto a Cool Notch.
+   - Confirmá con tu contraseña o Touch ID.
+
+3. Cuando te lo pida, dale permiso de Accesibilidad
+   (Configuración del Sistema → Privacidad y seguridad → Accesibilidad).
+   Hace falta para el brillo, el teclado y el botón de voz.
+
+4. Música: en los Ajustes de Cool Notch → Media elegí tu reproductor.
+   - Spotify o Apple Music: elegilos directo.
+   - YouTube Music en el navegador: elegí "Now Playing".
+   - YouTube Music de escritorio: instalá Pear Desktop
+     (https://github.com/pear-devs/pear-desktop) y elegí "YouTube Music".
+
+5. Botón de voz (la onda, al lado de la casita): abre el modo de voz de la
+   app ChatGPT para Mac sin sacarte de lo que estás haciendo. Necesita la app
+   de ChatGPT instalada. La primera vez cerrá ChatGPT (Cmd+Q) después de tocar
+   la onda y volvé a tocarla.
+
+Cool Notch es una versión modificada de Boring Notch
+(https://github.com/TheBoredTeam/boring.notch), software libre bajo licencia
+GPL-3.0. El código fuente de esta versión está disponible a pedido.

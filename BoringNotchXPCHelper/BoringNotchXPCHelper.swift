@@ -144,6 +144,7 @@ class BoringNotchXPCHelper: NSObject, BoringNotchXPCHelperProtocol {
             reply(false)
             return
         }
+        Self.ensureVoiceKeybinding()
         if !NSRunningApplication.runningApplications(withBundleIdentifier: Self.chatGPTBundleID).isEmpty {
             Self.pressVoiceHotkey()
             reply(true)
@@ -172,6 +173,18 @@ class BoringNotchXPCHelper: NSObject, BoringNotchXPCHelperProtocol {
                 reply(false)
             }
         }
+    }
+
+    /// Creates ChatGPT's keybindings file with the voice hotkey if the user has none yet.
+    /// An existing file is never modified.
+    private static func ensureVoiceKeybinding() {
+        let home = ProcessInfo.processInfo.environment["CODEX_HOME"]
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex").path
+        let file = URL(fileURLWithPath: home).appendingPathComponent("keybindings.json")
+        guard !FileManager.default.fileExists(atPath: file.path) else { return }
+        try? FileManager.default.createDirectory(atPath: home, withIntermediateDirectories: true)
+        let json = "[\n  { \"command\": \"realtimeVoice\", \"key\": \"Ctrl+Alt+Command+V\" }\n]\n"
+        try? json.write(to: file, atomically: true, encoding: .utf8)
     }
 
     private static func launchChatGPTHidden(_ completion: @escaping (NSRunningApplication?) -> Void) {
