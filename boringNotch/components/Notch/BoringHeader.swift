@@ -159,18 +159,15 @@ struct ChatGPTVoiceButton: View {
         }
         .buttonStyle(PlainButtonStyle())
         .disabled(phase == .loading)
-        .help("Hablar con ChatGPT")
+        .help("Hablar con ChatGPT (usa su atajo de voz ⌃⌥⌘V)")
     }
 
     private func start() {
         guard phase != .loading else { return }
-        NSLog("[CoolNotch] voice button tapped")
         withAnimation(.smooth) { phase = .loading }
         Task {
             let authorized = await XPCHelperClient.shared.ensureAccessibilityAuthorization(promptIfNeeded: true)
-            NSLog("[CoolNotch] helper accessibility authorized: \(authorized)")
             let ok = authorized ? await XPCHelperClient.shared.startChatGPTVoice() : false
-            NSLog("[CoolNotch] startChatGPTVoice result: \(ok)")
             await MainActor.run {
                 withAnimation(.smooth) { phase = ok ? .idle : .failed }
             }

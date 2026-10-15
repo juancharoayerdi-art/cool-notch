@@ -129,75 +129,41 @@ class BoringNotchXPCHelper: NSObject, BoringNotchXPCHelperProtocol {
 
     private static let chatGPTBundleID = "com.openai.codex"
 
-    /// Opens a new ChatGPT chat, triggers its voice mode (Ctrl+Shift+V), then minimizes the
-    /// ChatGPT window and returns focus to the app the user was in, so only ChatGPT's floating
-    /// voice orb stays on screen. (Hiding the app would hide the orb too.)
+    /// Starts ChatGPT's voice chat without leaving the current app by pressing ChatGPT's own
+    /// global "Voice chat hotkey" (ChatGPT → Settings → General), which Cool Notch expects to
+    /// be set to Control+Option+Command+V. If ChatGPT isn't running it's launched hidden first.
     @objc func startChatGPTVoice(with reply: @escaping (Bool) -> Void) {
-        NSLog("[CoolNotch] helper startChatGPTVoice, trusted=\(AXIsProcessTrusted())")
-        guard AXIsProcessTrusted(),
-              let url = URL(string: "codex://threads/new?mode=chat") else {
+        guard AXIsProcessTrusted() else {
             reply(false)
             return
         }
         let bundleID = Self.chatGPTBundleID
-        let wasRunning = !NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty
-        let previousApp = NSWorkspace.shared.frontmostApplication
+        let pressHotkey = {
+            Self.postKey(9 /* kVK_ANSI_V */, flags: [.maskControl, .maskAlternate, .maskCommand])
+            reply(true)
+        }
+
+        if !NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty {
+            pressHotkey()
+            return
+        }
 
         DispatchQueue.main.async {
+            guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
+                reply(false)
+                return
+            }
             let config = NSWorkspace.OpenConfiguration()
-            config.activates = true
-            NSWorkspace.shared.open(url, configuration: config) { _, error in
-                guard error == nil else { NSLog("[CoolNotch] open url failed: \(String(describing: error))"); reply(false); return }
-                DispatchQueue.global(qos: .userInitiated).async {
-                    // Wait (up to 20s) for ChatGPT to come to the front.
-                    let deadline = Date().addingTimeInterval(20)
-                    var app: NSRunningApplication?
-                    while Date() < deadline {
-                        if let front = NSWorkspace.shared.frontmostApplication,
-                           front.bundleIdentifier == bundleID {
-                            app = front
-                            break
-                        }
-                        Thread.sleep(forTimeInterval: 0.1)
-                    }
-                    guard let app else { NSLog("[CoolNotch] ChatGPT never came to front"); reply(false); return }
-
-                    // Give the new chat time to load (longer on a cold start).
-                    Thread.sleep(forTimeInterval: wasRunning ? 0.6 : 3.5)
-                    Self.postKey(9 /* kVK_ANSI_V */, flags: [.maskControl, .maskShift])
-
-                    // Let voice mode start, then minimize ChatGPT's main windows and go back.
-                    Thread.sleep(forTimeInterval: 0.8)
-                    let minimized = Self.minimizeWindows(of: app.processIdentifier)
-                    NSLog("[CoolNotch] minimized \(minimized) ChatGPT window(s)")
-                    DispatchQueue.main.async {
-                        if let previousApp, previousApp.bundleIdentifier != bundleID {
-                            previousApp.activate()
-                        }
-                        reply(true)
-                    }
+            config.activates = false
+            config.hides = true
+            NSWorkspace.shared.openApplication(at: appURL, configuration: config) { app, error in
+                guard app != nil, error == nil else { reply(false); return }
+                // Give ChatGPT time to start and register its global hotkey.
+                DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 5) {
+                    pressHotkey()
                 }
             }
         }
-    }
-
-    /// Minimizes the app's standard windows via Accessibility; returns how many were minimized.
-    private static func minimizeWindows(of pid: pid_t) -> Int {
-        let appElement = AXUIElementCreateApplication(pid)
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &value) == .success,
-              let windows = value as? [AXUIElement] else { return 0 }
-        var count = 0
-        for window in windows {
-            var subrole: CFTypeRef?
-            AXUIElementCopyAttributeValue(window, kAXSubroleAttribute as CFString, &subrole)
-            // Only real document windows; leave panels such as the voice orb alone.
-            guard (subrole as? String) == (kAXStandardWindowSubrole as String) else { continue }
-            if AXUIElementSetAttributeValue(window, kAXMinimizedAttribute as CFString, kCFBooleanTrue) == .success {
-                count += 1
-            }
-        }
-        return count
     }
 
     private static func postKey(_ keyCode: CGKeyCode, flags: CGEventFlags) {
