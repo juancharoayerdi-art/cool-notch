@@ -211,6 +211,13 @@ final class XPCHelperClient: NSObject {
         }
     }
 
+    nonisolated func prepareChatGPT() async {
+        let service = await MainActor.run { ensureRemoteService() }
+        try? await service.withService { service in
+            service.prepareChatGPT()
+        }
+    }
+
     // MARK: - Screen Brightness
     
     nonisolated func isScreenBrightnessAvailable() async -> Bool {

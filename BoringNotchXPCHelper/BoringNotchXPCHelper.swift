@@ -129,45 +129,78 @@ class BoringNotchXPCHelper: NSObject, BoringNotchXPCHelperProtocol {
 
     private static let chatGPTBundleID = "com.openai.codex"
 
+    /// Launches ChatGPT hidden (never brought to the front) so the voice hotkey is ready.
+    @objc func prepareChatGPT() {
+        Self.launchChatGPTHidden { _ in }
+    }
+
     /// Starts (or ends) ChatGPT's voice chat without leaving the current app by pressing ChatGPT's
     /// own global "Voice chat hotkey" (Control+Option+Command+V, set in ~/.codex/keybindings.json).
-    /// One tap = one press, never retried (a second press would toggle voice off again).
-    /// If ChatGPT isn't running it's launched hidden first.
+    /// When ChatGPT is already running: one tap = one press, replied immediately.
+    /// When it has to be launched: replies once the voice orb shows up (so the spinner keeps
+    /// spinning while it loads), pressing once more if the first press came too early.
     @objc func startChatGPTVoice(with reply: @escaping (Bool) -> Void) {
         guard AXIsProcessTrusted() else {
             reply(false)
             return
         }
-        let bundleID = Self.chatGPTBundleID
-
-        if !NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty {
+        if !NSRunningApplication.runningApplications(withBundleIdentifier: Self.chatGPTBundleID).isEmpty {
             Self.pressVoiceHotkey()
             reply(true)
             return
         }
-
-        DispatchQueue.main.async {
-            guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
+        Self.launchChatGPTHidden { app in
+            guard let app else { reply(false); return }
+            DispatchQueue.global(qos: .userInitiated).async {
+                let deadline = Date().addingTimeInterval(15)
+                while !app.isFinishedLaunching && Date() < deadline {
+                    Thread.sleep(forTimeInterval: 0.1)
+                }
+                Thread.sleep(forTimeInterval: 3)
+                for _ in 0..<2 {
+                    let before = Self.onScreenWindowNumbers(of: app.processIdentifier)
+                    Self.pressVoiceHotkey()
+                    let wait = Date().addingTimeInterval(5)
+                    while Date() < wait {
+                        Thread.sleep(forTimeInterval: 0.15)
+                        if Self.onScreenWindowNumbers(of: app.processIdentifier) != before {
+                            reply(true)
+                            return
+                        }
+                    }
+                }
                 reply(false)
+            }
+        }
+    }
+
+    private static func launchChatGPTHidden(_ completion: @escaping (NSRunningApplication?) -> Void) {
+        if let running = NSRunningApplication.runningApplications(withBundleIdentifier: chatGPTBundleID).first {
+            completion(running)
+            return
+        }
+        DispatchQueue.main.async {
+            guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: chatGPTBundleID) else {
+                completion(nil)
                 return
             }
             let config = NSWorkspace.OpenConfiguration()
             config.activates = false
             config.hides = true
             NSWorkspace.shared.openApplication(at: appURL, configuration: config) { app, error in
-                guard let app, error == nil else { reply(false); return }
-                DispatchQueue.global(qos: .userInitiated).async {
-                    // Wait for launch to finish, then a moment for the global hotkey to register.
-                    let deadline = Date().addingTimeInterval(15)
-                    while !app.isFinishedLaunching && Date() < deadline {
-                        Thread.sleep(forTimeInterval: 0.1)
-                    }
-                    Thread.sleep(forTimeInterval: 2.5)
-                    Self.pressVoiceHotkey()
-                    reply(true)
-                }
+                completion(error == nil ? app : nil)
             }
         }
+    }
+
+    /// On-screen window numbers owned by `pid`, from the window server (doesn't touch the app's
+    /// accessibility tree, so it doesn't slow Electron apps down).
+    private static func onScreenWindowNumbers(of pid: pid_t) -> Set<Int> {
+        guard let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+                as? [[String: Any]] else { return [] }
+        return Set(info.compactMap { window in
+            (window[kCGWindowOwnerPID as String] as? pid_t) == pid ? window[kCGWindowNumber as String] as? Int : nil
+        })
     }
 
     /// Types Control+Option+Command+V like a person would: modifiers down, V, then release.

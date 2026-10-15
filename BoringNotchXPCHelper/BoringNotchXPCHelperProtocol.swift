@@ -22,6 +22,8 @@ import Foundation
     func setScreenBrightness(_ value: Float, with reply: @escaping (Bool) -> Void)
     // Cool Notch: start a new ChatGPT chat in voice mode, then hide its window
     func startChatGPTVoice(with reply: @escaping (Bool) -> Void)
+    // Cool Notch: launch ChatGPT hidden in the background if it isn't running
+    func prepareChatGPT()
 }
 
 /*

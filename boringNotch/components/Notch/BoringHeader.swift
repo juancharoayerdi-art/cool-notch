@@ -160,7 +160,11 @@ struct ChatGPTVoiceButton: View {
         .buttonStyle(PlainButtonStyle())
         .disabled(phase == .loading)
         .help("Hablar con ChatGPT")
-        .task { _ = await XPCHelperClient.shared.isAccessibilityAuthorized() } // warm up the XPC helper
+        .task {
+            // Warm up the helper and have ChatGPT loading in the background before the tap.
+            _ = await XPCHelperClient.shared.isAccessibilityAuthorized()
+            await XPCHelperClient.shared.prepareChatGPT()
+        }
     }
 
     private func start() {
