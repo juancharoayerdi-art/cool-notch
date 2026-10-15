@@ -129,10 +129,10 @@ class BoringNotchXPCHelper: NSObject, BoringNotchXPCHelperProtocol {
 
     private static let chatGPTBundleID = "com.openai.codex"
 
-    /// Starts ChatGPT's voice chat without leaving the current app by pressing ChatGPT's own
-    /// global "Voice chat hotkey" (Control+Option+Command+V, set in ~/.codex/keybindings.json).
-    /// Replies once ChatGPT's floating voice orb appears, pressing once more if it doesn't show
-    /// up in time. If ChatGPT isn't running it's launched hidden first.
+    /// Starts (or ends) ChatGPT's voice chat without leaving the current app by pressing ChatGPT's
+    /// own global "Voice chat hotkey" (Control+Option+Command+V, set in ~/.codex/keybindings.json).
+    /// One tap = one press, never retried (a second press would toggle voice off again).
+    /// If ChatGPT isn't running it's launched hidden first.
     @objc func startChatGPTVoice(with reply: @escaping (Bool) -> Void) {
         guard AXIsProcessTrusted() else {
             reply(false)
@@ -140,10 +140,9 @@ class BoringNotchXPCHelper: NSObject, BoringNotchXPCHelperProtocol {
         }
         let bundleID = Self.chatGPTBundleID
 
-        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
-            DispatchQueue.global(qos: .userInitiated).async {
-                reply(Self.pressVoiceHotkeyAndWait(pid: app.processIdentifier))
-            }
+        if !NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty {
+            Self.pressVoiceHotkey()
+            reply(true)
             return
         }
 
@@ -164,36 +163,11 @@ class BoringNotchXPCHelper: NSObject, BoringNotchXPCHelperProtocol {
                         Thread.sleep(forTimeInterval: 0.1)
                     }
                     Thread.sleep(forTimeInterval: 2.5)
-                    reply(Self.pressVoiceHotkeyAndWait(pid: app.processIdentifier))
+                    Self.pressVoiceHotkey()
+                    reply(true)
                 }
             }
         }
-    }
-
-    /// Presses the voice hotkey and waits for ChatGPT's on-screen windows to change (the voice
-    /// orb appearing, or disappearing when the tap ends a voice chat). Retries the press once
-    /// if nothing changes within the wait window.
-    private static func pressVoiceHotkeyAndWait(pid: pid_t) -> Bool {
-        for _ in 0..<2 {
-            let before = onScreenWindowNumbers(of: pid)
-            pressVoiceHotkey()
-            let deadline = Date().addingTimeInterval(4)
-            while Date() < deadline {
-                Thread.sleep(forTimeInterval: 0.1)
-                if onScreenWindowNumbers(of: pid) != before {
-                    return true
-                }
-            }
-        }
-        return false
-    }
-
-    private static func onScreenWindowNumbers(of pid: pid_t) -> Set<Int> {
-        guard let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
-                as? [[String: Any]] else { return [] }
-        return Set(info.compactMap { window in
-            (window[kCGWindowOwnerPID as String] as? pid_t) == pid ? window[kCGWindowNumber as String] as? Int : nil
-        })
     }
 
     /// Types Control+Option+Command+V like a person would: modifiers down, V, then release.

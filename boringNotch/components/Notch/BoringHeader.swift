@@ -173,6 +173,8 @@ struct ChatGPTVoiceButton: View {
                 _ = await XPCHelperClient.shared.ensureAccessibilityAuthorization(promptIfNeeded: true)
                 ok = await XPCHelperClient.shared.startChatGPTVoice()
             }
+            // Keep the spinner briefly so the tap feels acknowledged while ChatGPT reacts.
+            if ok { try? await Task.sleep(for: .milliseconds(700)) }
             await MainActor.run {
                 withAnimation(.smooth) { phase = ok ? .idle : .failed }
             }
