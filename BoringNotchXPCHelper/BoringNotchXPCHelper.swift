@@ -140,9 +140,10 @@ class BoringNotchXPCHelper: NSObject, BoringNotchXPCHelperProtocol {
         }
         let bundleID = Self.chatGPTBundleID
 
-        if !NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty {
+        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
             Self.pressVoiceHotkey()
             reply(true)
+            Self.dockVoiceOrbUnderNotch(pid: app.processIdentifier)
             return
         }
 
@@ -165,9 +166,66 @@ class BoringNotchXPCHelper: NSObject, BoringNotchXPCHelperProtocol {
                     Thread.sleep(forTimeInterval: 2.5)
                     Self.pressVoiceHotkey()
                     reply(true)
+                    Self.dockVoiceOrbUnderNotch(pid: app.processIdentifier)
                 }
             }
         }
+    }
+
+    /// Watches (never presses again) for ChatGPT's small voice-orb window for a few seconds and
+    /// moves it so it sits centered right below the notch.
+    private static func dockVoiceOrbUnderNotch(pid: pid_t) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let deadline = Date().addingTimeInterval(8)
+            var placedAt: Date?
+            while Date() < deadline {
+                if let orb = voiceOrbWindow(pid: pid), let target = orbTargetOrigin(for: orb.size) {
+                    if abs(orb.origin.x - target.x) > 1 || abs(orb.origin.y - target.y) > 1 {
+                        var point = target
+                        if let value = AXValueCreate(.cgPoint, &point) {
+                            AXUIElementSetAttributeValue(orb.element, kAXPositionAttribute as CFString, value)
+                        }
+                    }
+                    // Keep correcting briefly in case ChatGPT animates it into place.
+                    if placedAt == nil { placedAt = Date() }
+                    if let placedAt, Date().timeIntervalSince(placedAt) > 1.2 { return }
+                }
+                Thread.sleep(forTimeInterval: 0.08)
+            }
+        }
+    }
+
+    private static func voiceOrbWindow(pid: pid_t) -> (element: AXUIElement, origin: CGPoint, size: CGSize)? {
+        let appElement = AXUIElementCreateApplication(pid)
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &value) == .success,
+              let windows = value as? [AXUIElement] else { return nil }
+        for window in windows {
+            var posRef: CFTypeRef?, sizeRef: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &posRef) == .success,
+                  AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &sizeRef) == .success,
+                  let posRef, let sizeRef else { continue }
+            var origin = CGPoint.zero, size = CGSize.zero
+            AXValueGetValue(posRef as! AXValue, .cgPoint, &origin)
+            AXValueGetValue(sizeRef as! AXValue, .cgSize, &size)
+            // The orb is a small, wide pill; regular ChatGPT windows are much bigger.
+            if size.width > 80, size.width <= 480, size.height > 20, size.height <= 160, size.width > size.height {
+                return (window, origin, size)
+            }
+        }
+        return nil
+    }
+
+    /// Top-left (Accessibility coordinates) that centers a window of `size` just below the notch.
+    private static func orbTargetOrigin(for size: CGSize) -> CGPoint? {
+        let screens = NSScreen.screens
+        guard let primary = screens.first,
+              let screen = screens.first(where: { $0.safeAreaInsets.top > 0 }) ?? NSScreen.main else { return nil }
+        let frame = screen.frame
+        let notchHeight = max(screen.safeAreaInsets.top, NSStatusBar.system.thickness)
+        let x = frame.midX - size.width / 2
+        let y = (primary.frame.maxY - frame.maxY) + notchHeight + 4
+        return CGPoint(x: x.rounded(), y: y.rounded())
     }
 
     /// Types Control+Option+Command+V like a person would: modifiers down, V, then release.
