@@ -136,24 +136,26 @@ struct ChatGPTVoiceButton: View {
 
     var body: some View {
         Button(action: start) {
-            Group {
-                switch phase {
-                case .idle:
-                    Image(systemName: "waveform")
-                        .foregroundStyle(.gray)
-                case .loading:
-                    ProgressView()
-                        .controlSize(.mini)
-                        .tint(.white)
-                case .failed:
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.yellow)
+            // Same metrics as TabButton (icon + 15pt horizontal padding) so spacing matches the tabs.
+            Image(systemName: "house.fill")
+                .hidden()
+                .overlay {
+                    switch phase {
+                    case .idle:
+                        Image(systemName: "waveform")
+                            .foregroundStyle(.gray)
+                    case .loading:
+                        ProgressView()
+                            .controlSize(.mini)
+                            .tint(.white)
+                    case .failed:
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.yellow)
+                    }
                 }
-            }
-            .frame(width: 16, height: 16)
-            .padding(.horizontal, 15)
-            .frame(height: 26)
-            .contentShape(Capsule())
+                .padding(.horizontal, 15)
+                .frame(height: 26)
+                .contentShape(Capsule())
         }
         .buttonStyle(PlainButtonStyle())
         .disabled(phase == .loading)
