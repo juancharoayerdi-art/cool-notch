@@ -130,21 +130,20 @@ class BoringNotchXPCHelper: NSObject, BoringNotchXPCHelperProtocol {
     private static let chatGPTBundleID = "com.openai.codex"
 
     /// Starts ChatGPT's voice chat without leaving the current app by pressing ChatGPT's own
-    /// global "Voice chat hotkey" (ChatGPT → Settings → General), which Cool Notch expects to
-    /// be set to Control+Option+Command+V. If ChatGPT isn't running it's launched hidden first.
+    /// global "Voice chat hotkey" (Control+Option+Command+V, set in ~/.codex/keybindings.json).
+    /// Replies once ChatGPT's floating voice orb appears, pressing once more if it doesn't show
+    /// up in time. If ChatGPT isn't running it's launched hidden first.
     @objc func startChatGPTVoice(with reply: @escaping (Bool) -> Void) {
         guard AXIsProcessTrusted() else {
             reply(false)
             return
         }
         let bundleID = Self.chatGPTBundleID
-        let pressHotkey = {
-            Self.postKey(9 /* kVK_ANSI_V */, flags: [.maskControl, .maskAlternate, .maskCommand])
-            reply(true)
-        }
 
-        if !NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty {
-            pressHotkey()
+        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
+            DispatchQueue.global(qos: .userInitiated).async {
+                reply(Self.pressVoiceHotkeyAndWait(pid: app.processIdentifier))
+            }
             return
         }
 
@@ -157,23 +156,72 @@ class BoringNotchXPCHelper: NSObject, BoringNotchXPCHelperProtocol {
             config.activates = false
             config.hides = true
             NSWorkspace.shared.openApplication(at: appURL, configuration: config) { app, error in
-                guard app != nil, error == nil else { reply(false); return }
-                // Give ChatGPT time to start and register its global hotkey.
-                DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 5) {
-                    pressHotkey()
+                guard let app, error == nil else { reply(false); return }
+                DispatchQueue.global(qos: .userInitiated).async {
+                    // Wait for launch to finish, then a moment for the global hotkey to register.
+                    let deadline = Date().addingTimeInterval(15)
+                    while !app.isFinishedLaunching && Date() < deadline {
+                        Thread.sleep(forTimeInterval: 0.1)
+                    }
+                    Thread.sleep(forTimeInterval: 2.5)
+                    reply(Self.pressVoiceHotkeyAndWait(pid: app.processIdentifier))
                 }
             }
         }
     }
 
-    private static func postKey(_ keyCode: CGKeyCode, flags: CGEventFlags) {
+    /// Presses the voice hotkey and waits for ChatGPT's on-screen windows to change (the voice
+    /// orb appearing, or disappearing when the tap ends a voice chat). Retries the press once
+    /// if nothing changes within the wait window.
+    private static func pressVoiceHotkeyAndWait(pid: pid_t) -> Bool {
+        for _ in 0..<2 {
+            let before = onScreenWindowNumbers(of: pid)
+            pressVoiceHotkey()
+            let deadline = Date().addingTimeInterval(4)
+            while Date() < deadline {
+                Thread.sleep(forTimeInterval: 0.1)
+                if onScreenWindowNumbers(of: pid) != before {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    private static func onScreenWindowNumbers(of pid: pid_t) -> Set<Int> {
+        guard let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+                as? [[String: Any]] else { return [] }
+        return Set(info.compactMap { window in
+            (window[kCGWindowOwnerPID as String] as? pid_t) == pid ? window[kCGWindowNumber as String] as? Int : nil
+        })
+    }
+
+    /// Types Control+Option+Command+V like a person would: modifiers down, V, then release.
+    private static func pressVoiceHotkey() {
         let source = CGEventSource(stateID: .hidSystemState)
-        let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true)
-        let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
-        down?.flags = flags
-        up?.flags = flags
-        down?.post(tap: .cghidEventTap)
-        up?.post(tap: .cghidEventTap)
+        let modifiers: [(CGKeyCode, CGEventFlags)] = [
+            (59, .maskControl),   // kVK_Control
+            (58, .maskAlternate), // kVK_Option
+            (55, .maskCommand),   // kVK_Command
+        ]
+        var flags: CGEventFlags = []
+        func post(_ key: CGKeyCode, down: Bool) {
+            let event = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: down)
+            event?.flags = flags
+            event?.post(tap: .cghidEventTap)
+            usleep(12_000)
+        }
+        for (key, flag) in modifiers {
+            flags.insert(flag)
+            post(key, down: true)
+        }
+        post(9 /* kVK_ANSI_V */, down: true)
+        usleep(30_000)
+        post(9, down: false)
+        for (key, flag) in modifiers.reversed() {
+            flags.remove(flag)
+            post(key, down: false)
+        }
     }
 
     @objc func setScreenBrightness(_ value: Float, with reply: @escaping (Bool) -> Void) {

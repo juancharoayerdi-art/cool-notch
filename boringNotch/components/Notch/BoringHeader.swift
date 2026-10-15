@@ -159,15 +159,20 @@ struct ChatGPTVoiceButton: View {
         }
         .buttonStyle(PlainButtonStyle())
         .disabled(phase == .loading)
-        .help("Hablar con ChatGPT (usa su atajo de voz ⌃⌥⌘V)")
+        .help("Hablar con ChatGPT")
+        .task { _ = await XPCHelperClient.shared.isAccessibilityAuthorized() } // warm up the XPC helper
     }
 
     private func start() {
         guard phase != .loading else { return }
         withAnimation(.smooth) { phase = .loading }
         Task {
-            let authorized = await XPCHelperClient.shared.ensureAccessibilityAuthorization(promptIfNeeded: true)
-            let ok = authorized ? await XPCHelperClient.shared.startChatGPTVoice() : false
+            // Single round trip in the common case; only ask for Accessibility if it failed.
+            var ok = await XPCHelperClient.shared.startChatGPTVoice()
+            if !ok, await !XPCHelperClient.shared.isAccessibilityAuthorized() {
+                _ = await XPCHelperClient.shared.ensureAccessibilityAuthorization(promptIfNeeded: true)
+                ok = await XPCHelperClient.shared.startChatGPTVoice()
+            }
             await MainActor.run {
                 withAnimation(.smooth) { phase = ok ? .idle : .failed }
             }
