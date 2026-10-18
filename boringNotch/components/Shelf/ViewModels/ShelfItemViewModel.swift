@@ -118,10 +118,10 @@ final class ShelfItemViewModel: ObservableObject {
         }
 
         if !selection.isSelected(item.id) { selection.selectSingle(item) }
-        // Open only on a genuine double-click: two plain clicks on this same item.
-        if event.clickCount >= 2,
-           let last = Self.lastPlainClick, last.id == item.id,
-           event.timestamp - last.time <= NSEvent.doubleClickInterval {
+        // Open only on a genuine double-click: two plain clicks on this same item, timed here
+        // (the notch panel doesn't always report clickCount reliably).
+        if let last = Self.lastPlainClick, last.id == item.id,
+           event.timestamp - last.time <= min(NSEvent.doubleClickInterval, 0.5) {
             Self.lastPlainClick = nil
             handleDoubleClick()
         } else {
