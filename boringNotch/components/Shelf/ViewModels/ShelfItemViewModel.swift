@@ -102,6 +102,7 @@ final class ShelfItemViewModel: ObservableObject {
 
     func handleClick(event: NSEvent, view: NSView) {
         let flags = event.modifierFlags
+        selection.noteItemClick()
         if flags.contains(.shift) {
             // Cool Notch: Shift-click only extends the selection; it never opens files.
             selection.shiftSelect(to: item, in: ShelfStateViewModel.shared.items)

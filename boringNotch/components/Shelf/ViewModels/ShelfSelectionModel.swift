@@ -63,6 +63,20 @@ final class ShelfSelectionModel: ObservableObject {
         selectedIDs = Set(rangeIDs)
     }
 
+    /// When an item last received a click. The shelf background's tap-to-deselect also fires
+    /// for clicks that started on an item, so it ignores taps right after an item click.
+    private(set) var lastItemClickTime: Date = .distantPast
+
+    func noteItemClick() {
+        lastItemClickTime = Date()
+    }
+
+    /// Background tap: deselect, unless the tap actually belonged to an item.
+    func clearFromBackgroundTap() {
+        guard Date().timeIntervalSince(lastItemClickTime) > 0.5 else { return }
+        clear()
+    }
+
     func clear() {
         selectedIDs.removeAll()
         lastAnchorID = nil
