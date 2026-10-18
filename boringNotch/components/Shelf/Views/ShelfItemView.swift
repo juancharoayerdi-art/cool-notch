@@ -219,7 +219,8 @@ private struct DraggableClickHandler<Content: View>: NSViewRepresentable {
         var onClick: ((NSEvent, NSView) -> Void)?
 
         private var mouseDownEvent: NSEvent?
-        private let dragThreshold: CGFloat = 3.0
+        // Cool Notch: 8pt so trackpad taps don't turn into drags and lose the selection.
+        private let dragThreshold: CGFloat = 8.0
         private var draggedURLs: [URL] = []
         private var draggedItems: [ShelfItem] = []
         

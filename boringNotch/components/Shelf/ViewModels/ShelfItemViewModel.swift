@@ -97,18 +97,36 @@ final class ShelfItemViewModel: ObservableObject {
     }
 
     // MARK: - Actions
+    /// Last plain click, used so only a real double-click on the same item opens it.
+    private static var lastPlainClick: (id: UUID, time: TimeInterval)?
+
     func handleClick(event: NSEvent, view: NSView) {
         let flags = event.modifierFlags
         if flags.contains(.shift) {
+            // Cool Notch: Shift-click only extends the selection; it never opens files.
             selection.shiftSelect(to: item, in: ShelfStateViewModel.shared.items)
+            Self.lastPlainClick = nil
+            return
         } else if flags.contains(.command) {
             selection.toggle(item)
+            Self.lastPlainClick = nil
+            return
         } else if flags.contains(.control) {
             handleRightClick(event: event, view: view)
-        } else {
-            if !selection.isSelected(item.id) { selection.selectSingle(item) }
+            Self.lastPlainClick = nil
+            return
         }
-        if event.clickCount == 2 { handleDoubleClick() }
+
+        if !selection.isSelected(item.id) { selection.selectSingle(item) }
+        // Open only on a genuine double-click: two plain clicks on this same item.
+        if event.clickCount >= 2,
+           let last = Self.lastPlainClick, last.id == item.id,
+           event.timestamp - last.time <= NSEvent.doubleClickInterval {
+            Self.lastPlainClick = nil
+            handleDoubleClick()
+        } else {
+            Self.lastPlainClick = (item.id, event.timestamp)
+        }
     }
 
     func handleRightClick(event: NSEvent, view: NSView) {
