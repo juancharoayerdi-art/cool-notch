@@ -22,9 +22,10 @@ struct DynamicNotchApp: App {
     let updaterController: SPUStandardUpdaterController
 
     init() {
-        // Cool Notch: updates from upstream Boring Notch are disabled (no feed configured).
+        // Cool Notch: updates come from Cool Notch's own GitHub releases (SUFeedURL in Info.plist),
+        // signed with Cool Notch's EdDSA key; never from upstream Boring Notch.
         updaterController = SPUStandardUpdaterController(
-            startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
+            startingUpdater: true, updaterDelegate: nil, userDriverDelegate: CoolNotchUpdateReminders.shared)
 
         // Initialize the settings window controller with the updater controller
         SettingsWindowController.shared.setUpdaterController(updaterController)
@@ -623,5 +624,20 @@ extension CGRect: @retroactive Hashable {
 
     public static func == (lhs: CGRect, rhs: CGRect) -> Bool {
         return lhs.origin == rhs.origin && lhs.size == rhs.size
+    }
+}
+
+
+/// Cool Notch is a background (menu bar) app, so scheduled update alerts are shown as gentle
+/// reminders: Sparkle presents them without stealing focus from what the user is doing.
+final class CoolNotchUpdateReminders: NSObject, SPUStandardUserDriverDelegate {
+    static let shared = CoolNotchUpdateReminders()
+
+    var supportsGentleScheduledUpdateReminders: Bool { true }
+
+    func standardUserDriverShouldHandleShowingScheduledUpdate(
+        _ update: SUAppcastItem, andInImmediateFocus immediateFocus: Bool
+    ) -> Bool {
+        true
     }
 }

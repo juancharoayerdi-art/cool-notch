@@ -10,11 +10,17 @@
 	<key>SUAutomaticallyUpdate</key>
 	<false/>
 	<key>SUEnableAutomaticChecks</key>
-	<false/>
+	<true/>
 	<key>SUEnableDownloaderService</key>
 	<true/>
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>
+	<key>SUFeedURL</key>
+	<string>https://github.com/juancharoayerdi-art/cool-notch/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>I1MXserNvj2NG3qK2nLX4ueVAowZsOmY/sK2nKjdmzc=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
 		<dict/>
