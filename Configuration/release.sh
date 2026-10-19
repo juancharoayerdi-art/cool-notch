@@ -18,7 +18,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO="juancharoayerdi-art/cool-notch"
 PUBLISH_ACCOUNT="juancharoayerdi-art"
 DEFAULT_ACCOUNT="juanayerdi-num"
-SPARKLE_BIN="$(dirname "$(find "$ROOT/build" -path '*artifacts/sparkle/Sparkle/bin/sign_update' | head -1)")"
+SPARKLE_BIN="$(dirname "$(find "$ROOT/build" -path '*artifacts/sparkle/Sparkle/bin/sign_update' -print -quit)")"
 
 [ -x "$SPARKLE_BIN/sign_update" ] || { echo "Sparkle tools not found; build the app once first"; exit 1; }
 
