@@ -4,11 +4,15 @@ COOL NOTCH — cómo instalarlo
 1. Arrastrá "Cool Notch" a la carpeta "Aplicaciones".
 
 2. Abrilo desde Aplicaciones. Como no está publicado en la App Store,
-   la primera vez macOS va a decir que no puede verificarlo:
-   - Tocá "Listo" / "OK".
+   la primera vez macOS va a decir que no pudo verificarlo:
+   - Tocá "Listo" (NO "Mover a la papelera").
    - Andá a Configuración del Sistema → Privacidad y seguridad.
-   - Bajá hasta el final y tocá "Abrir igualmente" junto a Cool Notch.
+   - Bajá hasta el final y tocá "Abrir igualmente" junto a Cool Notch
+     (aparece solo un rato después del intento, hacelo enseguida).
    - Confirmá con tu contraseña o Touch ID.
+   Alternativa por Terminal:
+     xattr -dr com.apple.quarantine "/Applications/Cool Notch.app"
+   Esto se hace una sola vez: las actualizaciones siguientes llegan solas.
 
 3. Cuando te lo pida, dale permiso de Accesibilidad
    (Configuración del Sistema → Privacidad y seguridad → Accesibilidad).
